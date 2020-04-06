@@ -1,14 +1,11 @@
-# Kconfig.rv32m1 - RV32M1 GPIO configuration options
-#
+# RV32M1 GPIO configuration options
+
 # Copyright (c) 2018 Foundries.io
-#
 # SPDX-License-Identifier: Apache-2.0
-#
 
 menuconfig GPIO_RV32M1
 	bool "RV32M1 GPIO driver"
 	depends on SOC_OPENISA_RV32M1_RISCV32
-	select HAS_DTS_GPIO
 	help
 	  Enable the RV32M1 GPIO driver.
 

@@ -16,7 +16,14 @@ void z_isr_install(unsigned int irq, void (*routine)(void *), void *param)
 {
 	unsigned int table_idx = irq - CONFIG_GEN_IRQ_START_VECTOR;
 
+	/*
+	 * Do not assert on the IRQ enable status for ARM GIC since the SGI
+	 * type interrupts are always enabled and attempting to install an ISR
+	 * for them will cause the assertion to fail.
+	 */
+#ifndef CONFIG_GIC
 	__ASSERT(!irq_is_enabled(irq), "IRQ %d is enabled", irq);
+#endif /* !CONFIG_GIC */
 
 	/* If dynamic IRQs are enabled, then the _sw_isr_table is in RAM and
 	 * can be modified
@@ -28,11 +35,11 @@ void z_isr_install(unsigned int irq, void (*routine)(void *), void *param)
 /* Some architectures don't/can't interpret flags or priority and have
  * no more processing to do than this.  Provide a generic fallback.
  */
-int __weak z_arch_irq_connect_dynamic(unsigned int irq,
-				      unsigned int priority,
-				      void (*routine)(void *),
-				      void *parameter,
-				      u32_t flags)
+int __weak arch_irq_connect_dynamic(unsigned int irq,
+				    unsigned int priority,
+				    void (*routine)(void *),
+				    void *parameter,
+				    u32_t flags)
 {
 	ARG_UNUSED(flags);
 	ARG_UNUSED(priority);

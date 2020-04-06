@@ -26,14 +26,18 @@ extern "C" {
  * @{
  */
 
+typedef void (*energy_scan_done_cb_t)(struct device *dev, s16_t max_ed);
+
 enum ieee802154_hw_caps {
-	IEEE802154_HW_FCS	= BIT(0), /* Frame Check-Sum supported */
-	IEEE802154_HW_PROMISC	= BIT(1), /* Promiscuous mode supported */
-	IEEE802154_HW_FILTER	= BIT(2), /* Filters PAN ID, long/short addr */
-	IEEE802154_HW_CSMA	= BIT(3), /* CSMA-CA supported */
-	IEEE802154_HW_2_4_GHZ	= BIT(4), /* 2.4Ghz radio supported */
-	IEEE802154_HW_TX_RX_ACK = BIT(5), /* Handles ACK request on TX */
-	IEEE802154_HW_SUB_GHZ	= BIT(6), /* Sub-GHz radio supported */
+	IEEE802154_HW_FCS	  = BIT(0), /* Frame Check-Sum supported */
+	IEEE802154_HW_PROMISC	  = BIT(1), /* Promiscuous mode supported */
+	IEEE802154_HW_FILTER	  = BIT(2), /* Filter PAN ID, long/short addr */
+	IEEE802154_HW_CSMA	  = BIT(3), /* CSMA-CA supported */
+	IEEE802154_HW_2_4_GHZ	  = BIT(4), /* 2.4Ghz radio supported */
+	IEEE802154_HW_TX_RX_ACK	  = BIT(5), /* Handles ACK request on TX */
+	IEEE802154_HW_SUB_GHZ	  = BIT(6), /* Sub-GHz radio supported */
+	IEEE802154_HW_ENERGY_SCAN = BIT(7), /* Energy scan supported */
+	IEEE802154_HW_TXTIME	  = BIT(8), /* TX at specified time supported */
 };
 
 enum ieee802154_filter_type {
@@ -54,6 +58,24 @@ struct ieee802154_filter {
 /* @endcond */
 };
 
+/** IEEE802.15.4 Transmission mode. */
+enum ieee802154_tx_mode {
+	/** Transmit packet immediately, no CCA. */
+	IEEE802154_TX_MODE_DIRECT,
+
+	/** Perform CCA before packet transmission. */
+	IEEE802154_TX_MODE_CCA,
+
+	/** Perform full CSMA CA procedure before packet transmission. */
+	IEEE802154_TX_MODE_CSMA_CA,
+
+	/** Transmit packet in the future, at specified time, no CCA. */
+	IEEE802154_TX_MODE_TXTIME,
+
+	/** Transmit packet in the future, perform CCA before transmission. */
+	IEEE802154_TX_MODE_TXTIME_CCA,
+};
+
 /** IEEE802.15.4 driver configuration types. */
 enum ieee802154_config_type {
 	/** Indicates how radio driver should set Frame Pending bit in ACK
@@ -70,6 +92,12 @@ enum ieee802154_config_type {
 	 *  (NULL pointer) should disable it for all enabled addresses.
 	 */
 	IEEE802154_CONFIG_ACK_FPB,
+
+	/** Indicates whether the device is a PAN coordinator. */
+	IEEE802154_CONFIG_PAN_COORDINATOR,
+
+	/** Enable/disable promiscuous mode. */
+	IEEE802154_CONFIG_PROMISCUOUS,
 };
 
 /** IEEE802.15.4 driver configuration data. */
@@ -87,6 +115,12 @@ struct ieee802154_config {
 			bool extended;
 			bool enabled;
 		} ack_fpb;
+
+		/** ``IEEE802154_CONFIG_PAN_COORDINATOR`` */
+		bool pan_coordinator;
+
+		/** ``IEEE802154_CONFIG_PROMISCUOUS`` */
+		bool promiscuous;
 	};
 };
 
@@ -122,9 +156,8 @@ struct ieee802154_radio_api {
 	int (*set_txpower)(struct device *dev, s16_t dbm);
 
 	/** Transmit a packet fragment */
-	int (*tx)(struct device *dev,
-		  struct net_pkt *pkt,
-		  struct net_buf *frag);
+	int (*tx)(struct device *dev, enum ieee802154_tx_mode mode,
+		  struct net_pkt *pkt, struct net_buf *frag);
 
 	/** Start the device */
 	int (*start)(struct device *dev);
@@ -142,17 +175,19 @@ struct ieee802154_radio_api {
 	u16_t (*get_subg_channel_count)(struct device *dev);
 #endif /* CONFIG_NET_L2_IEEE802154_SUB_GHZ */
 
-#ifdef CONFIG_NET_L2_OPENTHREAD
 	/** Run an energy detection scan.
-	 * Note: channel must be set prior to request this function.
-	 * duration parameter is in ms.
+	 *  Note: channel must be set prior to request this function.
+	 *  duration parameter is in ms.
 	 */
 	int (*ed_scan)(struct device *dev,
 		       u16_t duration,
-		       void (*done_cb)(struct device *dev,
-				       s16_t max_ed));
-#endif /* CONFIG_NET_L2_OPENTHREAD */
+		       energy_scan_done_cb_t done_cb);
 };
+
+/* Make sure that the network interface API is properly setup inside
+ * IEEE 802154 radio API struct (it is the first one).
+ */
+BUILD_ASSERT(offsetof(struct ieee802154_radio_api, iface_api) == 0);
 
 #define IEEE802154_AR_FLAG_SET (0x20)
 

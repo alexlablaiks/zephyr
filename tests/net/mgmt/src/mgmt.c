@@ -90,7 +90,8 @@ static struct dummy_api fake_iface_api = {
 };
 
 NET_DEVICE_INIT(net_event_test, "net_event_test",
-		fake_dev_init, NULL, NULL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
+		fake_dev_init, device_pm_control_nop,
+		NULL, NULL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
 		&fake_iface_api, DUMMY_L2, NET_L2_GET_CTX_TYPE(DUMMY_L2), 127);
 
 void test_requesting_nm(void)
@@ -247,7 +248,7 @@ static void initialize_event_tests(void)
 	k_thread_create(&thrower_thread_data, thrower_stack,
 			K_THREAD_STACK_SIZEOF(thrower_stack),
 			(k_thread_entry_t)thrower_thread,
-			NULL, NULL, NULL, K_PRIO_COOP(7), 0, 0);
+			NULL, NULL, NULL, K_PRIO_COOP(7), 0, K_NO_WAIT);
 }
 
 static int test_core_event(u32_t event, bool (*func)(void))

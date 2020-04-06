@@ -1,7 +1,4 @@
-title: Flash Partitions
-
-description: >
-    This binding gives a base FLASH partition description
+description: Flash partitions parent node
 
 compatible: "fixed-partitions"
 
@@ -16,10 +13,10 @@ properties:
         required: false
         description: number of size cells in reg property
 
-sub-node:
+child-binding:
+    description: Flash partition child node
     properties:
        label:
-          required: true
           type: string
           required: false
           description: Human readable string describing the device (used by Zephyr for API name)

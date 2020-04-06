@@ -33,6 +33,13 @@ struct bt_mesh_app_key {
 	} keys[2];
 };
 
+struct bt_mesh_node {
+	u16_t addr;
+	u16_t net_idx;
+	u8_t  dev_key[16];
+	u8_t  num_elem;
+};
+
 struct bt_mesh_subnet {
 	u32_t beacon_sent;        /* Timestamp of last sent beacon */
 	u8_t  beacons_last;       /* Number of beacons during last
@@ -90,7 +97,6 @@ struct bt_mesh_friend {
 	u8_t  fsn:1,
 	      send_last:1,
 	      pending_req:1,
-	      sec_update:1,
 	      pending_buf:1,
 	      valid:1,
 	      established:1;
@@ -215,6 +221,7 @@ enum {
 	BT_MESH_HB_PUB_PENDING,
 	BT_MESH_CFG_PENDING,
 	BT_MESH_MOD_PENDING,
+	BT_MESH_VA_PENDING,
 
 	/* Don't touch - intentionally last */
 	BT_MESH_FLAG_COUNT,
@@ -329,10 +336,6 @@ int bt_mesh_net_encode(struct bt_mesh_net_tx *tx, struct net_buf_simple *buf,
 int bt_mesh_net_send(struct bt_mesh_net_tx *tx, struct net_buf *buf,
 		     const struct bt_mesh_send_cb *cb, void *cb_data);
 
-int bt_mesh_net_resend(struct bt_mesh_subnet *sub, struct net_buf *buf,
-		       bool new_key, const struct bt_mesh_send_cb *cb,
-		       void *cb_data);
-
 int bt_mesh_net_decode(struct net_buf_simple *data, enum bt_mesh_net_if net_if,
 		       struct bt_mesh_net_rx *rx, struct net_buf_simple *buf);
 
@@ -344,6 +347,8 @@ u32_t bt_mesh_next_seq(void);
 void bt_mesh_net_start(void);
 
 void bt_mesh_net_init(void);
+void bt_mesh_net_header_parse(struct net_buf_simple *buf,
+			      struct bt_mesh_net_rx *rx);
 
 /* Friendship Credential Management */
 struct friend_cred {

@@ -19,9 +19,13 @@
 
 /* default system clock */
 
+#if defined(CONFIG_SOC_MK64F12)
 #define SYSCLK_DEFAULT_IOSC_HZ MHZ(120)
+#elif defined(CONFIG_SOC_MK66F18)
+#define SYSCLK_DEFAULT_IOSC_HZ MHZ(180)
+#endif
 #define BUSCLK_DEFAULT_IOSC_HZ (SYSCLK_DEFAULT_IOSC_HZ / \
-				CONFIG_K64_BUS_CLOCK_DIVIDER)
+				CONFIG_K6X_BUS_CLOCK_DIVIDER)
 
 /* address bases */
 
@@ -30,9 +34,9 @@
 #ifndef _ASMLANGUAGE
 
 #include <fsl_common.h>
-#include <device.h>
-#include <sys/util.h>
-#include <random/rand32.h>
+
+/* Add include for DTS generated information */
+#include <devicetree.h>
 
 #endif /* !_ASMLANGUAGE */
 

@@ -1365,6 +1365,7 @@ NET_DEVICE_INIT_INSTANCE(net_iface1_test,
 			 "iface1",
 			 iface1,
 			 net_iface_dev_init,
+			 device_pm_control_nop,
 			 &net_iface1_data,
 			 NULL,
 			 CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
@@ -1377,6 +1378,7 @@ NET_DEVICE_INIT_INSTANCE(net_iface2_test,
 			 "iface2",
 			 iface2,
 			 net_iface_dev_init,
+			 device_pm_control_nop,
 			 &net_iface2_data,
 			 NULL,
 			 CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
@@ -1501,7 +1503,7 @@ static void test_find_last_ipv6_fragment_udp(void)
 	struct net_pkt *pkt;
 	int ret;
 
-	pkt = net_pkt_alloc_with_buffer(iface1, 0, AF_INET6,
+	pkt = net_pkt_alloc_with_buffer(iface1, sizeof(ipv6_udp), AF_INET6,
 					IPPROTO_UDP, ALLOC_TIMEOUT);
 	zassert_not_null(pkt, "packet");
 
@@ -1535,7 +1537,8 @@ static void test_find_last_ipv6_fragment_hbho_udp(void)
 	struct net_pkt *pkt;
 	int ret;
 
-	pkt = net_pkt_alloc_with_buffer(iface1, sizeof(ipv6_hbho),
+	pkt = net_pkt_alloc_with_buffer(iface1, sizeof(ipv6_hbho) +
+					sizeof(struct net_ipv6_hdr) + 6,
 					AF_UNSPEC, 0, ALLOC_TIMEOUT);
 	zassert_not_null(pkt, "packet");
 

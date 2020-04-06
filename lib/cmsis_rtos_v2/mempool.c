@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <kernel_structs.h>
+#include <kernel.h>
+#include <string.h>
 #include "wrapper.h"
 
 #define TIME_OUT_TICKS  10
@@ -29,9 +30,9 @@ osMemoryPoolId_t osMemoryPoolNew(uint32_t block_count, uint32_t block_size,
 {
 	struct cv2_mslab *mslab;
 
-	BUILD_ASSERT_MSG(CONFIG_HEAP_MEM_POOL_SIZE >=
-			 CONFIG_CMSIS_V2_MEM_SLAB_MAX_DYNAMIC_SIZE,
-			 "heap must be configured to be at least the max dynamic size");
+	BUILD_ASSERT(CONFIG_HEAP_MEM_POOL_SIZE >=
+		     CONFIG_CMSIS_V2_MEM_SLAB_MAX_DYNAMIC_SIZE,
+		     "heap must be configured to be at least the max dynamic size");
 
 	if (k_is_in_isr()) {
 		return NULL;
@@ -45,7 +46,7 @@ osMemoryPoolId_t osMemoryPoolNew(uint32_t block_count, uint32_t block_size,
 		attr = &init_mslab_attrs;
 	}
 
-	if (k_mem_slab_alloc(&cv2_mem_slab, (void **)&mslab, 100) == 0) {
+	if (k_mem_slab_alloc(&cv2_mem_slab, (void **)&mslab, K_MSEC(100)) == 0) {
 		(void)memset(mslab, 0, sizeof(struct cv2_mslab));
 	} else {
 		return NULL;
@@ -108,7 +109,7 @@ void *osMemoryPoolAlloc(osMemoryPoolId_t mp_id, uint32_t timeout)
 	} else {
 		retval = k_mem_slab_alloc(
 			(struct k_mem_slab *)(&mslab->z_mslab),
-			(void **)&ptr, __ticks_to_ms(timeout));
+			(void **)&ptr, k_ticks_to_ms_floor64(timeout));
 	}
 
 	if (retval == 0) {

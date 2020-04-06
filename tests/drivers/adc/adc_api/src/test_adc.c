@@ -17,7 +17,16 @@
 #include <zephyr.h>
 #include <ztest.h>
 
-#if defined(CONFIG_BOARD_NRF51_PCA10028)
+#if defined(CONFIG_SHIELD_MIKROE_ADC_CLICK)
+#define ADC_DEVICE_NAME		DT_LABEL(DT_INST(0, microchip_mcp3204))
+#define ADC_RESOLUTION		12
+#define ADC_GAIN		ADC_GAIN_1
+#define ADC_REFERENCE		ADC_REF_EXTERNAL0
+#define ADC_ACQUISITION_TIME	ADC_ACQ_TIME_DEFAULT
+#define ADC_1ST_CHANNEL_ID	0
+#define ADC_2ND_CHANNEL_ID	1
+
+#elif defined(CONFIG_BOARD_NRF51DK_NRF51422)
 
 #include <hal/nrf_adc.h>
 #define ADC_DEVICE_NAME		DT_ADC_0_NAME
@@ -31,11 +40,15 @@
 #define ADC_2ND_CHANNEL_INPUT	NRF_ADC_CONFIG_INPUT_3
 
 #elif defined(CONFIG_BOARD_NRF52_PCA10040) || \
-      defined(CONFIG_BOARD_NRF52840_PCA10056) || \
-      defined(CONFIG_BOARD_NRF52840_BLIP) || \
-      defined(CONFIG_BOARD_NRF52840_PAPYR) || \
-      defined(CONFIG_BOARD_BL652_DVK) || \
-      defined(CONFIG_BOARD_BL654_DVK)
+	defined(CONFIG_BOARD_NRF52840DK_NRF52840) || \
+	defined(CONFIG_BOARD_NRF52840_PCA10059) || \
+	defined(CONFIG_BOARD_NRF52840_BLIP) || \
+	defined(CONFIG_BOARD_NRF52840_PAPYR) || \
+	defined(CONFIG_BOARD_NRF52833_PCA10100) || \
+	defined(CONFIG_BOARD_BL652_DVK) || \
+	defined(CONFIG_BOARD_BL654_DVK) || \
+	defined(CONFIG_BOARD_DEGU_EVK) || \
+	defined(CONFIG_BOARD_ADAFRUIT_FEATHER_NRF52840)
 
 #include <hal/nrf_saadc.h>
 #define ADC_DEVICE_NAME		DT_ADC_0_NAME
@@ -47,6 +60,16 @@
 #define ADC_1ST_CHANNEL_INPUT	NRF_SAADC_INPUT_AIN1
 #define ADC_2ND_CHANNEL_ID	2
 #define ADC_2ND_CHANNEL_INPUT	NRF_SAADC_INPUT_AIN2
+
+#elif defined(CONFIG_BOARD_FRDM_K22F)
+
+#define ADC_DEVICE_NAME		DT_ADC_0_NAME
+#define ADC_RESOLUTION		12
+#define ADC_GAIN		ADC_GAIN_1
+#define ADC_REFERENCE		ADC_REF_INTERNAL
+#define ADC_ACQUISITION_TIME	ADC_ACQ_TIME_DEFAULT
+#define ADC_1ST_CHANNEL_ID	14
+#define ADC_1ST_CHANNEL_INPUT	0
 
 #elif defined(CONFIG_BOARD_FRDM_K64F)
 
@@ -93,7 +116,8 @@
 #define ADC_ACQUISITION_TIME	ADC_ACQ_TIME_DEFAULT
 #define ADC_1ST_CHANNEL_ID	1
 
-#elif defined(CONFIG_BOARD_SAM_E70_XPLAINED)
+#elif defined(CONFIG_BOARD_SAM_E70_XPLAINED) || \
+	defined(CONFIG_BOARD_SAM_V71_XULT)
 
 #define ADC_DEVICE_NAME		DT_ADC_0_NAME
 #define ADC_RESOLUTION		12
@@ -104,7 +128,7 @@
 
 #elif defined(CONFIG_SOC_FAMILY_SAM0)
 #include <soc.h>
-#define ADC_DEVICE_NAME         DT_INST_0_ATMEL_SAM0_ADC_LABEL
+#define ADC_DEVICE_NAME         DT_LABEL(DT_INST(0, atmel_sam0_adc))
 #define ADC_RESOLUTION          12
 #define ADC_GAIN                ADC_GAIN_1
 #define ADC_REFERENCE           ADC_REF_INTERNAL
@@ -118,7 +142,8 @@
 	defined(CONFIG_BOARD_NUCLEO_F401RE) || \
 	defined(CONFIG_BOARD_NUCLEO_F746ZG) || \
 	defined(CONFIG_BOARD_NUCLEO_L073RZ) || \
-	defined(CONFIG_BOARD_NUCLEO_WB55RG)
+	defined(CONFIG_BOARD_NUCLEO_WB55RG) || \
+	defined(CONFIG_BOARD_NUCLEO_L152RE)
 #define ADC_DEVICE_NAME		DT_ADC_1_NAME
 #define ADC_RESOLUTION		12
 #define ADC_GAIN		ADC_GAIN_1
@@ -151,6 +176,16 @@
 #define ADC_ACQUISITION_TIME	ADC_ACQ_TIME_DEFAULT
 #define ADC_1ST_CHANNEL_ID	0
 #define ADC_2ND_CHANNEL_ID	1
+
+#elif defined(CONFIG_BOARD_MEC15XXEVB_ASSY6853) || \
+	defined(CONFIG_BOARD_MEC1501MODULAR_ASSY6885)
+#define ADC_DEVICE_NAME		DT_ADC_0_NAME
+#define ADC_RESOLUTION		12
+#define ADC_GAIN		ADC_GAIN_1
+#define ADC_REFERENCE		ADC_REF_INTERNAL
+#define ADC_ACQUISITION_TIME	ADC_ACQ_TIME_DEFAULT
+#define ADC_1ST_CHANNEL_ID	4
+#define ADC_2ND_CHANNEL_ID	5
 
 #else
 #error "Unsupported board."
@@ -227,8 +262,7 @@ static void check_samples(int expected_count)
 	TC_PRINT("\n");
 }
 
-
-/*******************************************************************************
+/*
  * test_adc_sample_one_channel
  */
 static int test_task_one_channel(void)
@@ -254,13 +288,13 @@ static int test_task_one_channel(void)
 
 	return TC_PASS;
 }
+
 void test_adc_sample_one_channel(void)
 {
 	zassert_true(test_task_one_channel() == TC_PASS, NULL);
 }
 
-
-/*******************************************************************************
+/*
  * test_adc_sample_two_channels
  */
 #if defined(ADC_2ND_CHANNEL_ID)
@@ -299,8 +333,7 @@ void test_adc_sample_two_channels(void)
 #endif /* defined(ADC_2ND_CHANNEL_ID) */
 }
 
-
-/*******************************************************************************
+/*
  * test_adc_asynchronous_call
  */
 #if defined(CONFIG_ADC_ASYNC)
@@ -342,6 +375,7 @@ static int test_task_asynchronous_call(void)
 	return TC_PASS;
 }
 #endif /* defined(CONFIG_ADC_ASYNC) */
+
 void test_adc_asynchronous_call(void)
 {
 #if defined(CONFIG_ADC_ASYNC)
@@ -351,8 +385,7 @@ void test_adc_asynchronous_call(void)
 #endif /* defined(CONFIG_ADC_ASYNC) */
 }
 
-
-/*******************************************************************************
+/*
  * test_adc_sample_with_interval
  */
 static enum adc_action sample_with_interval_callback(
@@ -363,6 +396,7 @@ static enum adc_action sample_with_interval_callback(
 	TC_PRINT("%s: sampling %d\n", __func__, sampling_index);
 	return ADC_ACTION_CONTINUE;
 }
+
 static int test_task_with_interval(void)
 {
 	int ret;
@@ -392,13 +426,13 @@ static int test_task_with_interval(void)
 
 	return TC_PASS;
 }
+
 void test_adc_sample_with_interval(void)
 {
 	zassert_true(test_task_with_interval() == TC_PASS, NULL);
 }
 
-
-/*******************************************************************************
+/*
  * test_adc_repeated_samplings
  */
 static u8_t m_samplings_done;
@@ -437,6 +471,7 @@ static enum adc_action repeated_samplings_callback(
 		}
 	}
 }
+
 static int test_task_repeated_samplings(void)
 {
 	int ret;
@@ -477,13 +512,13 @@ static int test_task_repeated_samplings(void)
 
 	return TC_PASS;
 }
+
 void test_adc_repeated_samplings(void)
 {
 	zassert_true(test_task_repeated_samplings() == TC_PASS, NULL);
 }
 
-
-/*******************************************************************************
+/*
  * test_adc_invalid_request
  */
 static int test_task_invalid_request(void)
@@ -522,6 +557,7 @@ static int test_task_invalid_request(void)
 
 	return TC_PASS;
 }
+
 void test_adc_invalid_request(void)
 {
 	zassert_true(test_task_invalid_request() == TC_PASS, NULL);

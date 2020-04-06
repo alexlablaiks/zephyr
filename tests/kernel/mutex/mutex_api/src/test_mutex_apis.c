@@ -30,13 +30,15 @@ static void tThread_entry_lock_no_wait(void *p1, void *p2, void *p3)
 
 static void tThread_entry_lock_timeout_fail(void *p1, void *p2, void *p3)
 {
-	zassert_true(k_mutex_lock((struct k_mutex *)p1, TIMEOUT - 100) != 0, NULL);
+	zassert_true(k_mutex_lock((struct k_mutex *)p1,
+				  K_MSEC(TIMEOUT - 100)) != 0, NULL);
 	TC_PRINT("bypass locked resource from spawn thread\n");
 }
 
 static void tThread_entry_lock_timeout_pass(void *p1, void *p2, void *p3)
 {
-	zassert_true(k_mutex_lock((struct k_mutex *)p1, TIMEOUT + 100) == 0, NULL);
+	zassert_true(k_mutex_lock((struct k_mutex *)p1,
+				  K_MSEC(TIMEOUT + 100)) == 0, NULL);
 	TC_PRINT("access resource from spawn thread\n");
 	k_mutex_unlock((struct k_mutex *)p1);
 }
@@ -48,12 +50,12 @@ static void tmutex_test_lock(struct k_mutex *pmutex,
 	k_thread_create(&tdata, tstack, STACK_SIZE,
 			entry_fn, pmutex, NULL, NULL,
 			K_PRIO_PREEMPT(0),
-			K_USER | K_INHERIT_PERMS, 0);
+			K_USER | K_INHERIT_PERMS, K_NO_WAIT);
 	k_mutex_lock(pmutex, K_FOREVER);
 	TC_PRINT("access resource from main thread\n");
 
 	/* wait for spawn thread to take action */
-	k_sleep(TIMEOUT);
+	k_msleep(TIMEOUT);
 }
 
 static void tmutex_test_lock_timeout(struct k_mutex *pmutex,
@@ -64,14 +66,14 @@ static void tmutex_test_lock_timeout(struct k_mutex *pmutex,
 	k_thread_create(&tdata, tstack, STACK_SIZE,
 			entry_fn, pmutex, NULL, NULL,
 			K_PRIO_PREEMPT(0),
-			K_USER | K_INHERIT_PERMS, 0);
+			K_USER | K_INHERIT_PERMS, K_NO_WAIT);
 	k_mutex_lock(pmutex, K_FOREVER);
 	TC_PRINT("access resource from main thread\n");
 
 	/* wait for spawn thread to take action */
-	k_sleep(TIMEOUT);
+	k_msleep(TIMEOUT);
 	k_mutex_unlock(pmutex);
-	k_sleep(TIMEOUT);
+	k_msleep(TIMEOUT);
 
 }
 
@@ -84,7 +86,7 @@ static void tmutex_test_lock_unlock(struct k_mutex *pmutex)
 	zassert_true(k_mutex_lock(pmutex, K_NO_WAIT) == 0,
 		     "fail to lock K_NO_WAIT");
 	k_mutex_unlock(pmutex);
-	zassert_true(k_mutex_lock(pmutex, TIMEOUT) == 0,
+	zassert_true(k_mutex_lock(pmutex, K_MSEC(TIMEOUT)) == 0,
 		     "fail to lock TIMEOUT");
 	k_mutex_unlock(pmutex);
 }
@@ -145,11 +147,11 @@ void test_main(void)
 			      &mutex);
 
 	ztest_test_suite(mutex_api,
-			 ztest_user_unit_test(test_mutex_lock_unlock),
-			 ztest_user_unit_test(test_mutex_reent_lock_forever),
+			 ztest_1cpu_user_unit_test(test_mutex_lock_unlock),
+			 ztest_1cpu_user_unit_test(test_mutex_reent_lock_forever),
 			 ztest_user_unit_test(test_mutex_reent_lock_no_wait),
 			 ztest_user_unit_test(test_mutex_reent_lock_timeout_fail),
-			 ztest_user_unit_test(test_mutex_reent_lock_timeout_pass)
+			 ztest_1cpu_user_unit_test(test_mutex_reent_lock_timeout_pass)
 			 );
 	ztest_run_test_suite(mutex_api);
 }

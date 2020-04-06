@@ -12,7 +12,7 @@ LOG_MODULE_REGISTER(net_test, CONFIG_DNS_RESOLVER_LOG_LEVEL);
 #include <stddef.h>
 #include <string.h>
 #include <errno.h>
-#include <misc/printk.h>
+#include <sys/printk.h>
 
 #include <ztest.h>
 
@@ -132,6 +132,7 @@ NET_DEVICE_INIT_INSTANCE(net_iface1_test,
 			 "iface1",
 			 iface1,
 			 net_iface_dev_init,
+			 device_pm_control_nop,
 			 &net_iface1_data,
 			 NULL,
 			 CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,

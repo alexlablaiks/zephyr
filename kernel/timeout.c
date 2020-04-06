@@ -3,12 +3,14 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#include <timeout_q.h>
-#include <drivers/timer/system_timer.h>
-#include <sys_clock.h>
+
+#include <kernel.h>
 #include <spinlock.h>
 #include <ksched.h>
+#include <timeout_q.h>
 #include <syscall_handler.h>
+#include <drivers/timer/system_timer.h>
+#include <sys_clock.h>
 
 #define LOCKED(lck) for (k_spinlock_key_t __i = {},			\
 					  __key = k_spin_lock(lck);	\
@@ -22,7 +24,7 @@ static sys_dlist_t timeout_list = SYS_DLIST_STATIC_INIT(&timeout_list);
 static struct k_spinlock timeout_lock;
 
 #define MAX_WAIT (IS_ENABLED(CONFIG_SYSTEM_CLOCK_SLOPPY_IDLE) \
-		  ? K_FOREVER : INT_MAX)
+		  ? K_TICKS_FOREVER : INT_MAX)
 
 /* Cycles left to process in the currently-executing z_clock_announce() */
 static int announce_remaining;
@@ -31,10 +33,11 @@ static int announce_remaining;
 int z_clock_hw_cycles_per_sec = CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC;
 
 #ifdef CONFIG_USERSPACE
-Z_SYSCALL_HANDLER(z_clock_hw_cycles_per_sec_runtime_get)
+static inline int z_vrfy_z_clock_hw_cycles_per_sec_runtime_get(void)
 {
 	return z_impl_z_clock_hw_cycles_per_sec_runtime_get();
 }
+#include <syscalls/z_clock_hw_cycles_per_sec_runtime_get_mrsh.c>
 #endif /* CONFIG_USERSPACE */
 #endif /* CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME */
 
@@ -80,8 +83,19 @@ static s32_t next_timeout(void)
 	return ret;
 }
 
-void z_add_timeout(struct _timeout *to, _timeout_func_t fn, s32_t ticks)
+void z_add_timeout(struct _timeout *to, _timeout_func_t fn,
+		   k_timeout_t timeout)
 {
+#ifdef CONFIG_LEGACY_TIMEOUT_API
+	k_ticks_t ticks = timeout;
+#else
+	k_ticks_t ticks = timeout.ticks + 1;
+
+	if (IS_ENABLED(CONFIG_TIMEOUT_64BIT) && Z_TICK_ABS(ticks) >= 0) {
+		ticks = Z_TICK_ABS(ticks) - (curr_tick + elapsed());
+	}
+#endif
+
 	__ASSERT(!sys_dnode_is_linked(&to->node), "");
 	to->fn = fn;
 	ticks = MAX(1, ticks);
@@ -125,29 +139,50 @@ int z_abort_timeout(struct _timeout *to)
 	return ret;
 }
 
-s32_t z_timeout_remaining(struct _timeout *timeout)
+/* must be locked */
+static k_ticks_t timeout_rem(struct _timeout *timeout)
 {
-	s32_t ticks = 0;
+	k_ticks_t ticks = 0;
 
 	if (z_is_inactive_timeout(timeout)) {
 		return 0;
 	}
 
-	LOCKED(&timeout_lock) {
-		for (struct _timeout *t = first(); t != NULL; t = next(t)) {
-			ticks += t->dticks;
-			if (timeout == t) {
-				break;
-			}
+	for (struct _timeout *t = first(); t != NULL; t = next(t)) {
+		ticks += t->dticks;
+		if (timeout == t) {
+			break;
 		}
 	}
 
 	return ticks - elapsed();
 }
 
+k_ticks_t z_timeout_remaining(struct _timeout *timeout)
+{
+	k_ticks_t ticks = 0;
+
+	LOCKED(&timeout_lock) {
+		ticks = timeout_rem(timeout);
+	}
+
+	return ticks;
+}
+
+k_ticks_t z_timeout_expires(struct _timeout *timeout)
+{
+	k_ticks_t ticks = 0;
+
+	LOCKED(&timeout_lock) {
+		ticks = curr_tick + timeout_rem(timeout);
+	}
+
+	return ticks;
+}
+
 s32_t z_get_next_timeout_expiry(void)
 {
-	s32_t ret = K_FOREVER;
+	s32_t ret = (s32_t) K_TICKS_FOREVER;
 
 	LOCKED(&timeout_lock) {
 		ret = next_timeout();
@@ -159,7 +194,7 @@ void z_set_timeout_expiry(s32_t ticks, bool idle)
 {
 	LOCKED(&timeout_lock) {
 		int next = next_timeout();
-		bool sooner = (next == K_FOREVER) || (ticks < next);
+		bool sooner = (next == K_TICKS_FOREVER) || (ticks < next);
 		bool imminent = next <= 1;
 
 		/* Only set new timeouts when they are sooner than
@@ -167,8 +202,12 @@ void z_set_timeout_expiry(s32_t ticks, bool idle)
 		 * one is about to expire: drivers have internal logic
 		 * that will bump the timeout to the "next" tick if
 		 * it's not considered to be settable as directed.
+		 * SMP can't use this optimization though: we don't
+		 * know when context switches happen until interrupt
+		 * exit and so can't get the timeslicing clamp folded
+		 * in.
 		 */
-		if (sooner && !imminent) {
+		if (!imminent && (sooner || IS_ENABLED(CONFIG_SMP))) {
 			z_clock_set_timeout(ticks, idle);
 		}
 	}
@@ -229,18 +268,42 @@ u32_t z_tick_get_32(void)
 #endif
 }
 
-s64_t z_impl_k_uptime_get(void)
+s64_t z_impl_k_uptime_ticks(void)
 {
-	return __ticks_to_ms(z_tick_get());
+	return z_tick_get();
 }
 
 #ifdef CONFIG_USERSPACE
-Z_SYSCALL_HANDLER(k_uptime_get, ret_p)
+static inline s64_t z_vrfy_k_uptime_ticks(void)
 {
-	u64_t *ret = (u64_t *)ret_p;
-
-	Z_OOPS(Z_SYSCALL_MEMORY_WRITE(ret, sizeof(*ret)));
-	*ret = z_impl_k_uptime_get();
-	return 0;
+	return z_impl_k_uptime_ticks();
 }
+#include <syscalls/k_uptime_ticks_mrsh.c>
 #endif
+
+/* Returns the uptime expiration (relative to an unlocked "now"!) of a
+ * timeout object.  When used correctly, this should be called once,
+ * synchronously with the user passing a new timeout value.  It should
+ * not be used iteratively to adjust a timeout.
+ */
+u64_t z_timeout_end_calc(k_timeout_t timeout)
+{
+	k_ticks_t dt;
+
+	if (K_TIMEOUT_EQ(timeout, K_FOREVER)) {
+		return UINT64_MAX;
+	} else if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
+		return z_tick_get();
+	}
+
+#ifdef CONFIG_LEGACY_TIMEOUT_API
+	dt = k_ms_to_ticks_ceil32(timeout);
+#else
+	dt = timeout.ticks;
+
+	if (IS_ENABLED(CONFIG_TIMEOUT_64BIT) && Z_TICK_ABS(dt) >= 0) {
+		return Z_TICK_ABS(dt);
+	}
+#endif
+	return z_tick_get() + MAX(1, dt);
+}

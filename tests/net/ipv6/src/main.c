@@ -283,7 +283,7 @@ static const struct ethernet_api net_test_if_api = {
 #define _ETH_L2_CTX_TYPE NET_L2_GET_CTX_TYPE(ETHERNET_L2)
 
 NET_DEVICE_INIT(net_test_ipv6, "net_test_ipv6",
-		net_test_dev_init, &net_test_data, NULL,
+		net_test_dev_init, device_pm_control_nop, &net_test_data, NULL,
 		CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
 		&net_test_if_api, _ETH_L2_LAYER, _ETH_L2_CTX_TYPE,
 		127);
@@ -488,7 +488,7 @@ static void test_send_ns_extra_options(void)
 	pkt = net_pkt_alloc_with_buffer(iface, sizeof(icmpv6_ns_invalid),
 					AF_UNSPEC, 0, K_FOREVER);
 
-	NET_ASSERT_INFO(pkt, "Out of TX packets");
+	NET_ASSERT(pkt, "Out of TX packets");
 
 	net_pkt_write(pkt, icmpv6_ns_invalid, sizeof(icmpv6_ns_invalid));
 	net_pkt_lladdr_clear(pkt);
@@ -511,7 +511,7 @@ static void test_send_ns_no_options(void)
 	pkt = net_pkt_alloc_with_buffer(iface, sizeof(icmpv6_ns_no_sllao),
 					AF_UNSPEC, 0, K_FOREVER);
 
-	NET_ASSERT_INFO(pkt, "Out of TX packets");
+	NET_ASSERT(pkt, "Out of TX packets");
 
 	net_pkt_write(pkt, icmpv6_ns_no_sllao, sizeof(icmpv6_ns_no_sllao));
 	net_pkt_lladdr_clear(pkt);
@@ -538,7 +538,7 @@ static void test_prefix_timeout(void)
 	net_if_ipv6_prefix_set_lf(prefix, false);
 	net_if_ipv6_prefix_set_timer(prefix, lifetime);
 
-	k_sleep((lifetime * 2U) * MSEC_PER_SEC);
+	k_sleep(K_SECONDS(lifetime * 2U));
 
 	prefix = net_if_ipv6_prefix_lookup(net_if_get_default(),
 					   &addr, len);
@@ -627,7 +627,7 @@ static void test_hbho_message(void)
 	pkt = net_pkt_alloc_with_buffer(iface, sizeof(ipv6_hbho),
 					AF_UNSPEC, 0, K_FOREVER);
 
-	NET_ASSERT_INFO(pkt, "Out of TX packets");
+	NET_ASSERT(pkt, "Out of TX packets");
 
 	net_pkt_write(pkt, ipv6_hbho, sizeof(ipv6_hbho));
 	net_pkt_lladdr_clear(pkt);
@@ -678,7 +678,7 @@ static void test_hbho_message_1(void)
 	pkt = net_pkt_alloc_with_buffer(iface, sizeof(ipv6_hbho_1),
 					AF_UNSPEC, 0, K_FOREVER);
 
-	NET_ASSERT_INFO(pkt, "Out of TX packets");
+	NET_ASSERT(pkt, "Out of TX packets");
 
 	net_pkt_write(pkt, ipv6_hbho_1, sizeof(ipv6_hbho_1));
 
@@ -738,7 +738,7 @@ static void test_hbho_message_2(void)
 	pkt = net_pkt_alloc_with_buffer(iface, sizeof(ipv6_hbho_2),
 					AF_UNSPEC, 0, K_FOREVER);
 
-	NET_ASSERT_INFO(pkt, "Out of TX packets");
+	NET_ASSERT(pkt, "Out of TX packets");
 
 
 	net_pkt_write(pkt, ipv6_hbho_2, sizeof(ipv6_hbho_2));
@@ -901,7 +901,7 @@ static void test_hbho_message_3(void)
 	pkt = net_pkt_alloc_with_buffer(iface, sizeof(ipv6_hbho_3),
 					AF_UNSPEC, 0, K_FOREVER);
 
-	NET_ASSERT_INFO(pkt, "Out of TX packets");
+	NET_ASSERT(pkt, "Out of TX packets");
 
 	net_pkt_write(pkt, ipv6_hbho_3, sizeof(ipv6_hbho_3));
 	net_pkt_lladdr_clear(pkt);
@@ -1338,7 +1338,7 @@ static void test_dst_iface_scope_mcast_send(void)
 		      "Interface local scope multicast packet was dropped (%d)",
 		      ret);
 
-	k_sem_take(&wait_data, WAIT_TIME);
+	k_sem_take(&wait_data, K_MSEC(WAIT_TIME));
 
 	zassert_true(recv_cb_called, "No data received on time, "
 		     "IPv6 recv test failed");

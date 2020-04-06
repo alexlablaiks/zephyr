@@ -58,7 +58,7 @@ int timer_create(clockid_t clockid, struct sigevent *evp, timer_t *timerid)
 		return -1;
 	}
 
-	if (k_mem_slab_alloc(&posix_timer_slab, (void **)&timer, 100) == 0) {
+	if (k_mem_slab_alloc(&posix_timer_slab, (void **)&timer, K_MSEC(100)) == 0) {
 		(void)memset(timer, 0, sizeof(struct timer_obj));
 	} else {
 		errno = ENOMEM;
@@ -174,7 +174,7 @@ int timer_settime(timer_t timerid, int flags, const struct itimerspec *value,
 	}
 
 	timer->status = ACTIVE;
-	k_timer_start(&timer->ztimer, duration, timer->reload);
+	k_timer_start(&timer->ztimer, K_MSEC(duration), K_MSEC(timer->reload));
 	return 0;
 }
 
@@ -201,4 +201,3 @@ int timer_delete(timer_t timerid)
 
 	return 0;
 }
-

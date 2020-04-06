@@ -27,10 +27,9 @@ static int pwr_ctrl_init(struct device *dev)
 		return -ENODEV;
 	}
 
-	gpio_pin_configure(gpio, cfg->pin, GPIO_DIR_OUT);
-	gpio_pin_write(gpio, cfg->pin, 1);
+	gpio_pin_configure(gpio, cfg->pin, GPIO_OUTPUT_HIGH);
 
-	k_sleep(1); /* Wait for the rail to come up and stabilize */
+	k_sleep(K_MSEC(1)); /* Wait for the rail to come up and stabilize */
 
 	return 0;
 }
@@ -67,7 +66,7 @@ DEVICE_INIT(vdd_pwr_ctrl_init, "", pwr_ctrl_init, NULL, &vdd_pwr_ctrl_cfg,
 #endif
 
 static const struct pwr_ctrl_cfg ccs_vdd_pwr_ctrl_cfg = {
-	.port = DT_INST_0_SEMTECH_SX1509B_LABEL,
+	.port = DT_LABEL(DT_INST(0, semtech_sx1509b)),
 	.pin = CCS_VDD_PWR_CTRL_GPIO_PIN,
 };
 

@@ -1,10 +1,7 @@
 # Copyright (c) 2018, Phytec Messtechnik GmbH
 # SPDX-License-Identifier: Apache-2.0
 
-title: SSD1306 128x64 Dot Matrix Display Controller
-
-description: >
-    This is a representation of the SSD1306 128x64 Dot Matrix Display Controller
+description: SSD1306 128x64 dot-matrix display controller
 
 compatible: "solomon,ssd1306fb"
 
@@ -36,6 +33,11 @@ properties:
       required: true
       description: mapping of the display start line to one of COM0 .. COM63
 
+    multiplex-ratio:
+      type: int
+      required: true
+      description: Multiplex Ratio
+
     segment-remap:
       type: boolean
       required: false
@@ -46,6 +48,11 @@ properties:
       required: false
       description: Scan direction is from last COM output to first COM output
 
+    com-sequential:
+      type: boolean
+      required: false
+      description: Sequential COM pin configuration
+
     prechargep:
       type: int
       required: true
@@ -54,3 +61,8 @@ properties:
     reset-gpios:
       type: phandle-array
       required: false
+      description: RESET pin.
+
+        The RESET pin of SSD1306 is active low.
+        If connected directly the MCU pin should be configured
+        as active low.

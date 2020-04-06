@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required(VERSION 3.13.1)
-include($ENV{ZEPHYR_BASE}/cmake/app/boilerplate.cmake NO_POLICY_SCOPE)
+find_package(Zephyr HINTS $ENV{ZEPHYR_BASE})
 project(kernel_common)
 
 if(NOT CONFIG_ARM)
@@ -18,11 +18,7 @@ target_sources(app PRIVATE
 	src/atomic.c
 	src/byteorder.c
 	src/clock.c
-	src/dlist.c
-	src/intmath.c
 	src/main.c
-	src/slist.c
-	src/sflist.c
 	src/timeout_order.c
 	src/multilib.c
   src/errno.c

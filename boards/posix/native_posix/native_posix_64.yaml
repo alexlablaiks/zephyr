@@ -6,7 +6,6 @@ toolchain:
   - zephyr
   - llvm
 supported:
+  - eeprom
   - netif:eth
   - usb_device
-testing:
-  default: true

@@ -167,11 +167,12 @@ static int twim_nrfx_pm_control(struct device *dev, u32_t ctrl_command,
 				void *context, device_pm_cb cb, void *arg)
 {
 	int ret = 0;
+	u32_t pm_current_state = get_dev_data(dev)->pm_state;
 
 	if (ctrl_command == DEVICE_PM_SET_POWER_STATE) {
 		u32_t new_state = *((const u32_t *)context);
 
-		if (new_state != get_dev_data(dev)->pm_state) {
+		if (new_state != pm_current_state) {
 			switch (new_state) {
 			case DEVICE_PM_ACTIVE_STATE:
 				init_twim(dev);
@@ -185,6 +186,9 @@ static int twim_nrfx_pm_control(struct device *dev, u32_t ctrl_command,
 			case DEVICE_PM_LOW_POWER_STATE:
 			case DEVICE_PM_SUSPEND_STATE:
 			case DEVICE_PM_OFF_STATE:
+				if (pm_current_state != DEVICE_PM_ACTIVE_STATE) {
+					break;
+				}
 				nrfx_twim_uninit(&get_dev_config(dev)->twim);
 				break;
 
@@ -196,7 +200,7 @@ static int twim_nrfx_pm_control(struct device *dev, u32_t ctrl_command,
 			}
 		}
 	} else {
-		assert(ctrl_command == DEVICE_PM_GET_POWER_STATE);
+		__ASSERT_NO_MSG(ctrl_command == DEVICE_PM_GET_POWER_STATE);
 		*((u32_t *)context) = get_dev_data(dev)->pm_state;
 	}
 
@@ -216,15 +220,15 @@ static int twim_nrfx_pm_control(struct device *dev, u32_t ctrl_command,
 					  : I2C_NRFX_TWIM_INVALID_FREQUENCY)
 
 #define I2C_NRFX_TWIM_DEVICE(idx)					       \
-	BUILD_ASSERT_MSG(						       \
+	BUILD_ASSERT(						       \
 		I2C_NRFX_TWIM_FREQUENCY(				       \
-			DT_NORDIC_NRF_I2C_I2C_##idx##_CLOCK_FREQUENCY)	       \
+			DT_NORDIC_NRF_TWIM_I2C_##idx##_CLOCK_FREQUENCY)	       \
 		!= I2C_NRFX_TWIM_INVALID_FREQUENCY,			       \
 		"Wrong I2C " #idx " frequency setting in dts");		       \
 	static int twim_##idx##_init(struct device *dev)		       \
 	{								       \
-		IRQ_CONNECT(DT_NORDIC_NRF_I2C_I2C_##idx##_IRQ_0,	       \
-			    DT_NORDIC_NRF_I2C_I2C_##idx##_IRQ_0_PRIORITY,      \
+		IRQ_CONNECT(DT_NORDIC_NRF_TWIM_I2C_##idx##_IRQ_0,	       \
+			    DT_NORDIC_NRF_TWIM_I2C_##idx##_IRQ_0_PRIORITY,     \
 			    nrfx_isr, nrfx_twim_##idx##_irq_handler, 0);       \
 		return init_twim(dev);					       \
 	}								       \
@@ -237,14 +241,14 @@ static int twim_nrfx_pm_control(struct device *dev, u32_t ctrl_command,
 	static const struct i2c_nrfx_twim_config twim_##idx##z_config = {      \
 		.twim = NRFX_TWIM_INSTANCE(idx),			       \
 		.config = {						       \
-			.scl       = DT_NORDIC_NRF_I2C_I2C_##idx##_SCL_PIN,    \
-			.sda       = DT_NORDIC_NRF_I2C_I2C_##idx##_SDA_PIN,    \
+			.scl       = DT_NORDIC_NRF_TWIM_I2C_##idx##_SCL_PIN,   \
+			.sda       = DT_NORDIC_NRF_TWIM_I2C_##idx##_SDA_PIN,   \
 			.frequency = I2C_NRFX_TWIM_FREQUENCY(		       \
-				DT_NORDIC_NRF_I2C_I2C_##idx##_CLOCK_FREQUENCY) \
+				DT_NORDIC_NRF_TWIM_I2C_##idx##_CLOCK_FREQUENCY)\
 		}							       \
 	};								       \
 	DEVICE_DEFINE(twim_##idx,					       \
-		      DT_NORDIC_NRF_I2C_I2C_##idx##_LABEL,		       \
+		      DT_NORDIC_NRF_TWIM_I2C_##idx##_LABEL,		       \
 		      twim_##idx##_init,				       \
 		      twim_nrfx_pm_control,				       \
 		      &twim_##idx##_data,				       \

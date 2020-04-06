@@ -8,6 +8,9 @@ toolchain:
   - xtools
 supported:
   - pci
+  - nvs
   - netif:serial-net
+  - ieee802154
+  - eeprom
 testing:
   default: true

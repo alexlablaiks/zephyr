@@ -5,7 +5,7 @@
 		DEVICE_INIT_SECTIONS()
 	} GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
 
-#if defined(CONFIG_GEN_ISR_TABLES) && defined(CONFIG_DYNAMIC_INTERRUPTS)
+#if defined(CONFIG_GEN_SW_ISR_TABLE) && defined(CONFIG_DYNAMIC_INTERRUPTS)
 	SECTION_DATA_PROLOGUE(sw_isr_table,,)
 	{
 		/*
@@ -80,6 +80,7 @@
 	{
 		_k_sem_list_start = .;
 		KEEP(*("._k_sem.static.*"))
+		KEEP(*("._sys_sem.static.*"))
 		_k_sem_list_end = .;
 	} GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
 
@@ -148,16 +149,6 @@
 		KEEP(*(SORT_BY_NAME(".net_if_dev.*")))
 		__net_if_dev_end = .;
 	} GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
-
-#if defined(CONFIG_NET_SHELL)
-	SECTION_DATA_PROLOGUE(net_stack,,SUBALIGN(4))
-	{
-		__net_stack_start = .;
-		*(".net_stack.*")
-		KEEP(*(SORT_BY_NAME(".net_stack*")))
-		__net_stack_end = .;
-	} GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
-#endif /* CONFIG_NET_SHELL */
 
 	SECTION_DATA_PROLOGUE(net_l2_data,,SUBALIGN(4))
 	{

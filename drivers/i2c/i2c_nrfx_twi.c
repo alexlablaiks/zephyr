@@ -193,11 +193,12 @@ static int twi_nrfx_pm_control(struct device *dev, u32_t ctrl_command,
 				void *context, device_pm_cb cb, void *arg)
 {
 	int ret = 0;
+	u32_t pm_current_state = get_dev_data(dev)->pm_state;
 
 	if (ctrl_command == DEVICE_PM_SET_POWER_STATE) {
 		u32_t new_state = *((const u32_t *)context);
 
-		if (new_state != get_dev_data(dev)->pm_state) {
+		if (new_state != pm_current_state) {
 			switch (new_state) {
 			case DEVICE_PM_ACTIVE_STATE:
 				init_twi(dev);
@@ -211,7 +212,9 @@ static int twi_nrfx_pm_control(struct device *dev, u32_t ctrl_command,
 			case DEVICE_PM_LOW_POWER_STATE:
 			case DEVICE_PM_SUSPEND_STATE:
 			case DEVICE_PM_OFF_STATE:
-				nrfx_twi_uninit(&get_dev_config(dev)->twi);
+				if (pm_current_state == DEVICE_PM_ACTIVE_STATE) {
+					nrfx_twi_uninit(&get_dev_config(dev)->twi);
+				}
 				break;
 
 			default:
@@ -222,7 +225,7 @@ static int twi_nrfx_pm_control(struct device *dev, u32_t ctrl_command,
 			}
 		}
 	} else {
-		assert(ctrl_command == DEVICE_PM_GET_POWER_STATE);
+		__ASSERT_NO_MSG(ctrl_command == DEVICE_PM_GET_POWER_STATE);
 		*((u32_t *)context) = get_dev_data(dev)->pm_state;
 	}
 
@@ -242,15 +245,15 @@ static int twi_nrfx_pm_control(struct device *dev, u32_t ctrl_command,
 					  : I2C_NRFX_TWI_INVALID_FREQUENCY)
 
 #define I2C_NRFX_TWI_DEVICE(idx)					       \
-	BUILD_ASSERT_MSG(						       \
+	BUILD_ASSERT(						       \
 		I2C_NRFX_TWI_FREQUENCY(					       \
-			DT_NORDIC_NRF_I2C_I2C_##idx##_CLOCK_FREQUENCY)	       \
+			DT_NORDIC_NRF_TWI_I2C_##idx##_CLOCK_FREQUENCY)	       \
 		!= I2C_NRFX_TWI_INVALID_FREQUENCY,			       \
 		"Wrong I2C " #idx " frequency setting in dts");		       \
 	static int twi_##idx##_init(struct device *dev)			       \
 	{								       \
-		IRQ_CONNECT(DT_NORDIC_NRF_I2C_I2C_##idx##_IRQ_0,	       \
-			    DT_NORDIC_NRF_I2C_I2C_##idx##_IRQ_0_PRIORITY,      \
+		IRQ_CONNECT(DT_NORDIC_NRF_TWI_I2C_##idx##_IRQ_0,	       \
+			    DT_NORDIC_NRF_TWI_I2C_##idx##_IRQ_0_PRIORITY,      \
 			    nrfx_isr, nrfx_twi_##idx##_irq_handler, 0);	       \
 		return init_twi(dev);					       \
 	}								       \
@@ -263,14 +266,14 @@ static int twi_nrfx_pm_control(struct device *dev, u32_t ctrl_command,
 	static const struct i2c_nrfx_twi_config twi_##idx##z_config = {	       \
 		.twi = NRFX_TWI_INSTANCE(idx),				       \
 		.config = {						       \
-			.scl       = DT_NORDIC_NRF_I2C_I2C_##idx##_SCL_PIN,    \
-			.sda       = DT_NORDIC_NRF_I2C_I2C_##idx##_SDA_PIN,    \
+			.scl       = DT_NORDIC_NRF_TWI_I2C_##idx##_SCL_PIN,    \
+			.sda       = DT_NORDIC_NRF_TWI_I2C_##idx##_SDA_PIN,    \
 			.frequency = I2C_NRFX_TWI_FREQUENCY(		       \
-				DT_NORDIC_NRF_I2C_I2C_##idx##_CLOCK_FREQUENCY) \
+				DT_NORDIC_NRF_TWI_I2C_##idx##_CLOCK_FREQUENCY) \
 		}							       \
 	};								       \
 	DEVICE_DEFINE(twi_##idx,					       \
-		      DT_NORDIC_NRF_I2C_I2C_##idx##_LABEL,		       \
+		      DT_NORDIC_NRF_TWI_I2C_##idx##_LABEL,		       \
 		      twi_##idx##_init,					       \
 		      twi_nrfx_pm_control,				       \
 		      &twi_##idx##_data,				       \
@@ -286,4 +289,3 @@ I2C_NRFX_TWI_DEVICE(0);
 #ifdef CONFIG_I2C_1_NRF_TWI
 I2C_NRFX_TWI_DEVICE(1);
 #endif
-

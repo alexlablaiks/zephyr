@@ -9,9 +9,8 @@
 #include <nrfx_qdec.h>
 #include <hal/nrf_gpio.h>
 
-#define LOG_LEVEL CONFIG_SENSOR_LOG_LEVEL
 #include <logging/log.h>
-LOG_MODULE_REGISTER(qdec_nrfx);
+LOG_MODULE_REGISTER(qdec_nrfx, CONFIG_SENSOR_LOG_LEVEL);
 
 
 #define FULL_ANGLE 360
@@ -91,10 +90,10 @@ static int qdec_nrfx_channel_get(struct device       *dev,
 	data->acc = 0;
 	irq_unlock(key);
 
-	BUILD_ASSERT_MSG(DT_NORDIC_NRF_QDEC_QDEC_0_STEPS > 0,
-			 "only positive number valid");
-	BUILD_ASSERT_MSG(DT_NORDIC_NRF_QDEC_QDEC_0_STEPS <= 2148,
-			 "overflow possible");
+	BUILD_ASSERT(DT_NORDIC_NRF_QDEC_QDEC_0_STEPS > 0,
+		     "only positive number valid");
+	BUILD_ASSERT(DT_NORDIC_NRF_QDEC_QDEC_0_STEPS <= 2148,
+		     "overflow possible");
 
 	val->val1 = (acc * FULL_ANGLE) / DT_NORDIC_NRF_QDEC_QDEC_0_STEPS;
 	val->val2 = (acc * FULL_ANGLE)
@@ -186,7 +185,7 @@ static int qdec_nrfx_init(struct device *dev)
 #endif
 		.ledpre             = DT_NORDIC_NRF_QDEC_QDEC_0_LED_PRE,
 		.ledpol             = NRF_QDEC_LEPOL_ACTIVE_HIGH,
-		.interrupt_priority = NRFX_QDEC_CONFIG_IRQ_PRIORITY,
+		.interrupt_priority = NRFX_QDEC_DEFAULT_CONFIG_IRQ_PRIORITY,
 		.dbfen              = 0, /* disabled */
 		.sample_inten       = 0, /* disabled */
 	};

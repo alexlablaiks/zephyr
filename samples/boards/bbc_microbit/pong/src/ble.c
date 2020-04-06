@@ -16,6 +16,7 @@
 #include <bluetooth/uuid.h>
 #include <bluetooth/conn.h>
 #include <bluetooth/gatt.h>
+#include <bluetooth/hci.h>
 
 
 #include "pong.h"
@@ -337,14 +338,17 @@ static bool pong_uuid_match(const u8_t *data, u8_t len)
 
 static void create_conn(const bt_addr_le_t *addr)
 {
+	int err;
+
 	if (default_conn) {
 		return;
 	}
 
 	printk("Found matching device, initiating connection...\n");
 
-	default_conn = bt_conn_create_le(addr, BT_LE_CONN_PARAM_DEFAULT);
-	if (!default_conn) {
+	err = bt_conn_le_create(addr, BT_CONN_LE_CREATE_CONN,
+				BT_LE_CONN_PARAM_DEFAULT, &default_conn);
+	if (err) {
 		printk("Failed to initiate connection");
 		return;
 	}
@@ -356,7 +360,7 @@ static void create_conn(const bt_addr_le_t *addr)
 static void device_found(const bt_addr_le_t *addr, s8_t rssi, u8_t type,
 			 struct net_buf_simple *ad)
 {
-	if (type != BT_LE_ADV_IND) {
+	if (type != BT_GAP_ADV_TYPE_ADV_IND) {
 		return;
 	}
 
@@ -512,7 +516,8 @@ BT_GATT_SERVICE_DEFINE(pong_svc,
 	BT_GATT_PRIMARY_SERVICE(&pong_svc_uuid.uuid),
 	BT_GATT_CHARACTERISTIC(&pong_chr_uuid.uuid, BT_GATT_CHRC_NOTIFY,
 			       BT_GATT_PERM_NONE, NULL, NULL, NULL),
-	BT_GATT_CCC(pong_ccc_cfg_changed),
+	BT_GATT_CCC(pong_ccc_cfg_changed,
+		    BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
 );
 
 void ble_init(void)

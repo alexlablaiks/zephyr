@@ -50,7 +50,10 @@
 
 #if defined(__cplusplus)
 template < class T, size_t N >
-constexpr size_t ARRAY_SIZE(T(&)[N]) { return N; }
+#if __cplusplus >= 201103L
+constexpr
+#endif /* >= C++11 */
+size_t ARRAY_SIZE(T(&)[N]) { return N; }
 
 #else
 /* Evaluates to number of elements in an array; compile error if not
@@ -89,10 +92,20 @@ constexpr size_t ARRAY_SIZE(T(&)[N]) { return N; }
 #define INLINE
 #endif
 
+/** @brief Return larger value of two provided expressions.
+ *
+ * @note Arguments are evaluated twice. See Z_MAX for GCC only, single
+ * evaluation version.
+ */
 #ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
+/** @brief Return smaller value of two provided expressions.
+ *
+ * @note Arguments are evaluated twice. See Z_MIN for GCC only, single
+ * evaluation version.
+ */
 #ifndef MIN
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #endif
@@ -170,6 +183,21 @@ size_t bin2hex(const u8_t *buf, size_t buflen, char *hex, size_t hexlen);
  */
 size_t hex2bin(const char *hex, size_t hexlen, u8_t *buf, size_t buflen);
 
+/**
+ * @brief      Convert a u8_t into decimal string representation.
+ *
+ * Convert a u8_t value into ASCII decimal string representation.
+ * The string is terminated if there is enough space in buf.
+ *
+ * @param[out] buf     Address of where to store the string representation.
+ * @param[in]  buflen  Size of the storage area for string representation.
+ * @param[in]  value   The value to convert to decimal string
+ *
+ * @return     The length of the converted string (excluding terminator if
+ *             any), or 0 if an error occurred.
+ */
+u8_t u8_to_dec(char *buf, u8_t buflen, u8_t value);
+
 #endif /* !_ASMLANGUAGE */
 
 /* KB, MB, GB */
@@ -188,6 +216,9 @@ size_t hex2bin(const char *hex, size_t hexlen, u8_t *buf, size_t buflen);
 #define BIT(n)  (1UL << (n))
 #endif
 #endif
+
+/** 64-bit unsigned integer with bit position _n set */
+#define BIT64(_n) (1ULL << (_n))
 
 /**
  * @brief Macro sets or clears bit depending on boolean value
@@ -292,6 +323,25 @@ size_t hex2bin(const char *hex, size_t hexlen, u8_t *buf, size_t buflen);
 #define Z_COND_CODE_1(_flag, _if_1_code, _else_code) \
 	__COND_CODE(_XXXX##_flag, _if_1_code, _else_code)
 
+/**
+ * @brief Insert code if flag is defined and equals 1.
+ *
+ * Usage example:
+ *
+ * IF_ENABLED(CONFIG_FLAG, (u32_t foo;))
+ *
+ * It can be considered as more compact alternative to:
+ *
+ * \#if defined(CONFIG_FLAG) && (CONFIG_FLAG == 1)
+ *	u32_t foo;
+ * \#endif
+ *
+ * @param _flag		Evaluated flag
+ * @param _code		Code used if flag exists and equal 1. Argument must be
+ *			in brackets.
+ */
+#define IF_ENABLED(_flag, _code) \
+	COND_CODE_1(_flag, _code, ())
 /**
  * @brief Insert code depending on result of flag evaluation.
  *
@@ -661,6 +711,21 @@ size_t hex2bin(const char *hex, size_t hexlen, u8_t *buf, size_t buflen);
 
 #define UTIL_IF(c) UTIL_IIF(UTIL_BOOL(c))
 
+/*
+ * These are like || and &&, but they do evaluation and
+ * short-circuiting at preprocessor time instead of runtime.
+ *
+ * UTIL_OR(foo, bar) is sometimes a replacement for (foo || bar)
+ * when "bar" is an expression that would cause a build
+ * error when "foo" is true.
+ *
+ * UTIL_AND(foo, bar) is sometimes a replacement for (foo && bar)
+ * when "bar" is an expression that would cause a build
+ * error when "foo" is false.
+ */
+#define UTIL_OR(a, b) COND_CODE_1(UTIL_BOOL(a), (a), (b))
+#define UTIL_AND(a, b) COND_CODE_1(UTIL_BOOL(a), (b), (0))
+
 #define UTIL_EAT(...)
 #define UTIL_EXPAND(...) __VA_ARGS__
 #define UTIL_WHEN(c) UTIL_IF(c)(UTIL_EXPAND, UTIL_EAT)
@@ -688,10 +753,10 @@ size_t hex2bin(const char *hex, size_t hexlen, u8_t *buf, size_t buflen);
  * @arg LEN: The length of the sequence. Must be defined and less than
  * 20.
  *
- * @arg F(i, F_ARG): A macro function that accepts two arguments.
- *  F is called repeatedly, the first argument
- *  is the index in the sequence, and the second argument is the third
- *  argument given to UTIL_LISTIFY.
+ * @arg F(i, ...): A macro function that accepts at least two arguments.
+ *  F is called repeatedly, the first argument is the index in the sequence,
+ *  the variable list of arguments passed to UTIL_LISTIFY are passed through
+ *  to F.
  *
  * Example:
  *
@@ -703,7 +768,7 @@ size_t hex2bin(const char *hex, size_t hexlen, u8_t *buf, size_t buflen);
  * @note Calling UTIL_LISTIFY with undefined arguments has undefined
  * behavior.
  */
-#define UTIL_LISTIFY(LEN, F, F_ARG) UTIL_EVAL(UTIL_REPEAT(LEN, F, F_ARG))
+#define UTIL_LISTIFY(LEN, F, ...) UTIL_EVAL(UTIL_REPEAT(LEN, F, __VA_ARGS__))
 
 /**@brief Implementation details for NUM_VAR_ARGS */
 #define NUM_VA_ARGS_LESS_1_IMPL(				\
@@ -780,6 +845,64 @@ size_t hex2bin(const char *hex, size_t hexlen, u8_t *buf, size_t buflen);
 #define MACRO_MAP_13(macro, a, ...) macro(a)MACRO_MAP_12(macro, __VA_ARGS__,)
 #define MACRO_MAP_14(macro, a, ...) macro(a)MACRO_MAP_13(macro, __VA_ARGS__,)
 #define MACRO_MAP_15(macro, a, ...) macro(a)MACRO_MAP_14(macro, __VA_ARGS__,)
+
+/**
+ * @brief Mapping macro that pastes results together
+ *
+ * Like @ref MACRO_MAP(), but pastes the results together into a
+ * single token by repeated application of @ref UTIL_CAT().
+ *
+ * For example, with this macro FOO:
+ *
+ *     #define FOO(x) item_##x##_
+ *
+ * MACRO_MAP_CAT(FOO, a, b, c) expands to the token:
+ *
+ *     item_a_item_b_item_c_
+ *
+ * @param ... Macro to expand on each argument, followed by its
+ *            arguments. (The macro should take exactly one argument.)
+ * @return The results of expanding the macro on each argument, all pasted
+ *         together
+ */
+#define MACRO_MAP_CAT(...) MACRO_MAP_CAT_(__VA_ARGS__)
+#define MACRO_MAP_CAT_(...)						\
+	/* To make sure it works also for 2 arguments in total */	\
+	MACRO_MAP_CAT_N(NUM_VA_ARGS_LESS_1(__VA_ARGS__), __VA_ARGS__)
+
+/**
+ * @brief Mapping macro that pastes a fixed number of results together
+ *
+ * Similar to @ref MACRO_MAP_CAT(), but expects a fixed number of
+ * arguments. If more arguments are given than are expected, the rest
+ * are ignored.
+ *
+ * @param N   Number of arguments to map
+ * @param ... Macro to expand on each argument, followed by its
+ *            arguments. (The macro should take exactly one argument.)
+ * @return The results of expanding the macro on each argument, all pasted
+ *         together
+ */
+#define MACRO_MAP_CAT_N(N, ...) MACRO_MAP_CAT_N_(N, __VA_ARGS__)
+#define MACRO_MAP_CAT_N_(N, ...) UTIL_CAT(MACRO_MC_, N)(__VA_ARGS__,)
+
+#define MACRO_MC_0(...)
+#define MACRO_MC_1(m, a, ...)  m(a)
+#define MACRO_MC_2(m, a, ...)  UTIL_CAT(m(a), MACRO_MC_1(m, __VA_ARGS__,))
+#define MACRO_MC_3(m, a, ...)  UTIL_CAT(m(a), MACRO_MC_2(m, __VA_ARGS__,))
+#define MACRO_MC_4(m, a, ...)  UTIL_CAT(m(a), MACRO_MC_3(m, __VA_ARGS__,))
+#define MACRO_MC_5(m, a, ...)  UTIL_CAT(m(a), MACRO_MC_4(m, __VA_ARGS__,))
+#define MACRO_MC_6(m, a, ...)  UTIL_CAT(m(a), MACRO_MC_5(m, __VA_ARGS__,))
+#define MACRO_MC_7(m, a, ...)  UTIL_CAT(m(a), MACRO_MC_6(m, __VA_ARGS__,))
+#define MACRO_MC_8(m, a, ...)  UTIL_CAT(m(a), MACRO_MC_7(m, __VA_ARGS__,))
+#define MACRO_MC_9(m, a, ...)  UTIL_CAT(m(a), MACRO_MC_8(m, __VA_ARGS__,))
+#define MACRO_MC_10(m, a, ...) UTIL_CAT(m(a), MACRO_MC_9(m, __VA_ARGS__,))
+#define MACRO_MC_11(m, a, ...) UTIL_CAT(m(a), MACRO_MC_10(m, __VA_ARGS__,))
+#define MACRO_MC_12(m, a, ...) UTIL_CAT(m(a), MACRO_MC_11(m, __VA_ARGS__,))
+#define MACRO_MC_13(m, a, ...) UTIL_CAT(m(a), MACRO_MC_12(m, __VA_ARGS__,))
+#define MACRO_MC_14(m, a, ...) UTIL_CAT(m(a), MACRO_MC_13(m, __VA_ARGS__,))
+#define MACRO_MC_15(m, a, ...) UTIL_CAT(m(a), MACRO_MC_14(m, __VA_ARGS__,))
+
 /*
  * The following provides variadic preprocessor macro support to
  * help eliminate multiple, repetitive function/macro calls.  This

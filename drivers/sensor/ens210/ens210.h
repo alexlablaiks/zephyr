@@ -5,7 +5,7 @@
  */
 
 #ifndef ZEPHYR_DRIVERS_SENSOR_ENS210_ENS210_H_
-#define ZEPHYR_DRIVERS_SENSOR_CCS8ZEPHYR_DRIVERS_SENSOR_ENS210_ENS210_H_11_CCS811_H_
+#define ZEPHYR_DRIVERS_SENSOR_ENS210_ENS210_H_
 
 #include <device.h>
 #include <drivers/gpio.h>
@@ -24,6 +24,28 @@
 #define ENS210_REG_H_VAL      0x33
 
 #define ENS210_PART_ID 0x0210
+
+#if defined CONFIG_ENS210_TEMPERATURE_OFF
+#define ENS210_T_RUN   0
+#define ENS210_T_START 0
+#elif defined CONFIG_ENS210_TEMPERATURE_SINGLE
+#define ENS210_T_RUN   0
+#define ENS210_T_START 1
+#elif defined CONFIG_ENS210_TEMPERATURE_CONTINUOUS
+#define ENS210_T_RUN   1
+#define ENS210_T_START 1
+#endif
+
+#if defined CONFIG_ENS210_HUMIDITY_OFF
+#define ENS210_H_RUN   0
+#define ENS210_H_START 0
+#elif defined CONFIG_ENS210_HUMIDITY_SINGLE
+#define ENS210_H_RUN   0
+#define ENS210_H_START 1
+#elif defined CONFIG_ENS210_HUMIDITY_CONTINUOUS
+#define ENS210_H_RUN   1
+#define ENS210_H_START 1
+#endif
 
 /*
  * Polynomial

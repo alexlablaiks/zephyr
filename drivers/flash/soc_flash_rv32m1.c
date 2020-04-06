@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#define DT_DRV_COMPAT soc_nv_flash
+
 #include <kernel.h>
 #include <device.h>
 #include <string.h>
@@ -116,8 +118,8 @@ static int flash_mcux_write_protection(struct device *dev, bool enable)
 #if defined(CONFIG_FLASH_PAGE_LAYOUT)
 static const struct flash_pages_layout dev_layout = {
 	.pages_count = KB(CONFIG_FLASH_SIZE) /
-					DT_INST_0_SOC_NV_FLASH_ERASE_BLOCK_SIZE,
-	.pages_size = DT_INST_0_SOC_NV_FLASH_ERASE_BLOCK_SIZE,
+					DT_INST_PROP(0, erase_block_size),
+	.pages_size = DT_INST_PROP(0, erase_block_size),
 };
 
 static void flash_mcux_pages_layout(
@@ -165,4 +167,3 @@ static int flash_mcux_init(struct device *dev)
 DEVICE_AND_API_INIT(flash_mcux, DT_FLASH_DEV_NAME,
 			flash_mcux_init, &flash_data, NULL, POST_KERNEL,
 			CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &flash_mcux_api);
-

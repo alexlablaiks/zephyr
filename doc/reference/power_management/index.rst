@@ -1,4 +1,4 @@
-.. _power_management:
+.. _power_management_api:
 
 Power Management
 ################
@@ -205,6 +205,9 @@ transaction that cannot be interrupted. This method can be used in
 implementations where the applications and components using devices are not
 expected to be power aware and do not implement device power management.
 
+.. image:: central_method.svg
+   :align: center
+
 This method can also be used to emulate a hardware feature supported by some
 SOCs which cause automatic entry to deep sleep when all devices are idle.
 Refer to `Busy Status Indication`_ to see how to indicate whether a device is busy
@@ -266,7 +269,7 @@ in transition between power states:
 Device Model with Power Management Support
 ==========================================
 
-Drivers initialize the devices using macros. See :ref:`device_drivers` for
+Drivers initialize the devices using macros. See :ref:`device_model_api` for
 details on how these macros are used. Use the DEVICE_DEFINE macro to initialize
 drivers providing power management support via the PM control function.
 One of the macro parameters is the pointer to the device_pm_control handler function.

@@ -14,6 +14,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/conn.h>
+#include <bluetooth/crypto.h>
 
 #include <tinycrypt/constants.h>
 #include <tinycrypt/hmac_prng.h>
@@ -32,7 +33,8 @@ static int prng_reseed(struct tc_hmac_prng_struct *h)
 {
 	u8_t seed[32];
 	s64_t extra;
-	int ret, i;
+	size_t i;
+	int ret;
 
 	for (i = 0; i < (sizeof(seed) / 8); i++) {
 		struct bt_hci_rp_le_rand *rp;
@@ -119,7 +121,8 @@ int bt_encrypt_le(const u8_t key[16], const u8_t plaintext[16],
 	struct tc_aes_key_sched_struct s;
 	u8_t tmp[16];
 
-	BT_DBG("key %s plaintext %s", bt_hex(key, 16), bt_hex(plaintext, 16));
+	BT_DBG("key %s", bt_hex(key, 16));
+	BT_DBG("plaintext %s", bt_hex(plaintext, 16));
 
 	sys_memcpy_swap(tmp, key, 16);
 
@@ -145,7 +148,8 @@ int bt_encrypt_be(const u8_t key[16], const u8_t plaintext[16],
 {
 	struct tc_aes_key_sched_struct s;
 
-	BT_DBG("key %s plaintext %s", bt_hex(key, 16), bt_hex(plaintext, 16));
+	BT_DBG("key %s", bt_hex(key, 16));
+	BT_DBG("plaintext %s", bt_hex(plaintext, 16));
 
 	if (tc_aes128_set_encrypt_key(&s, key) == TC_CRYPTO_FAIL) {
 		return -EINVAL;

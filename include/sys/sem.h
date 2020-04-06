@@ -65,8 +65,7 @@ struct sys_sem {
  * are identical and can be treated as a k_sem in the boot initialization code
  */
 #define SYS_SEM_DEFINE(_name, _initial_count, _count_limit) \
-	Z_DECL_ALIGN(struct sys_sem) _name \
-		__in_section(_k_sem, static, _name) = { \
+	Z_STRUCT_SECTION_ITERABLE(sys_sem, _name) = { \
 		.kernel_sem = Z_SEM_INITIALIZER(_name.kernel_sem, \
 						_initial_count, _count_limit) \
 	}; \
@@ -111,7 +110,7 @@ int sys_sem_give(struct sys_sem *sem);
  * This routine takes @a sem.
  *
  * @param sem Address of the sys_sem.
- * @param timeout Waiting period to take the sys_sem (in milliseconds),
+ * @param timeout Waiting period to take the sys_sem,
  *                or one of the special values K_NO_WAIT and K_FOREVER.
  *
  * @retval 0 sys_sem taken.
@@ -119,7 +118,7 @@ int sys_sem_give(struct sys_sem *sem);
  * @retval -ETIMEDOUT Waiting period timed out.
  * @retval -EACCES Caller does not have enough access.
  */
-int sys_sem_take(struct sys_sem *sem, s32_t timeout);
+int sys_sem_take(struct sys_sem *sem, k_timeout_t timeout);
 
 /**
  * @brief Get sys_sem's value

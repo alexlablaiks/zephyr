@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include <timestamp.h>
-
+#include <kernel_internal.h>
 
 #define CALCULATE_TIME(special_char, profile, name)			     \
 	{								     \
@@ -44,11 +44,23 @@
 #define TIMING_INFO_GET_TIMER_VALUE() (TIMING_INFO_OS_GET_TIME())
 #define SUBTRACT_CLOCK_CYCLES(val)    (val)
 
+#elif CONFIG_SOC_SERIES_MEC1501X
+#define TIMING_INFO_PRE_READ()
+#define TIMING_INFO_OS_GET_TIME()     (B32TMR1_REGS->CNT)
+#define TIMING_INFO_GET_TIMER_VALUE() (TIMING_INFO_OS_GET_TIME())
+#define SUBTRACT_CLOCK_CYCLES(val)    (val)
+
 #elif CONFIG_X86
 #define TIMING_INFO_PRE_READ()
 #define TIMING_INFO_OS_GET_TIME()      (z_tsc_read())
 #define TIMING_INFO_GET_TIMER_VALUE()  (TIMING_INFO_OS_GET_TIME())
 #define SUBTRACT_CLOCK_CYCLES(val)     (val)
+
+#elif CONFIG_ARM64
+#define TIMING_INFO_PRE_READ()
+#define TIMING_INFO_OS_GET_TIME()      (k_cycle_get_32())
+#define TIMING_INFO_GET_TIMER_VALUE()  (k_cycle_get_32())
+#define SUBTRACT_CLOCK_CYCLES(val)     ((u32_t)val)
 
 #elif CONFIG_ARM
 #define TIMING_INFO_PRE_READ()
@@ -127,13 +139,54 @@ static inline u32_t get_core_freq_MHz(void)
 	return SystemCoreClock/1000000;
 }
 
+#elif CONFIG_SOC_SERIES_MEC1501X
+
+#define NANOSECS_PER_SEC	(1000000000)
+#define CYCLES_PER_SEC		(48000000)
+#define CYCLES_TO_NS(x)		((x) * (NANOSECS_PER_SEC/CYCLES_PER_SEC))
+#define PRINT_STATS(x, y, z)   PRINT_F(x, y, z)
+
+/* Configure Timer parameters */
+static inline void benchmark_timer_init(void)
+{
+	/* Setup counter */
+	B32TMR1_REGS->CTRL =
+		MCHP_BTMR_CTRL_ENABLE |
+		MCHP_BTMR_CTRL_AUTO_RESTART |
+		MCHP_BTMR_CTRL_COUNT_UP;
+
+	B32TMR1_REGS->PRLD = 0;		/* Preload */
+	B32TMR1_REGS->CNT = 0;		/* Counter value */
+
+	B32TMR1_REGS->IEN = 0;		/* Disable interrupt */
+	B32TMR1_REGS->STS = 1;		/* Clear interrupt */
+}
+
+/* Stop the timer */
+static inline void benchmark_timer_stop(void)
+{
+	B32TMR1_REGS->CTRL &= ~MCHP_BTMR_CTRL_START;
+}
+
+/* Start the timer */
+static inline void benchmark_timer_start(void)
+{
+	B32TMR1_REGS->CTRL |= MCHP_BTMR_CTRL_START;
+}
+
+/* 48MHz counter frequency */
+static inline u32_t get_core_freq_MHz(void)
+{
+	return CYCLES_PER_SEC;
+}
+
 #else  /* All other architectures */
 /* Done because weak attribute doesn't work on static inline. */
 static inline void benchmark_timer_init(void)  {       }
 static inline void benchmark_timer_stop(void)  {       }
 static inline void benchmark_timer_start(void) {       }
 
-#define CYCLES_TO_NS(x) SYS_CLOCK_HW_CYCLES_TO_NS(x)
+#define CYCLES_TO_NS(x) (u32_t)k_cyc_to_ns_floor64(x)
 
 /* Get Core Frequency in MHz */
 static inline u32_t get_core_freq_MHz(void)
@@ -201,15 +254,6 @@ void mutex_bench(void);
 void msg_passing_bench(void);
 void userspace_bench(void);
 
-/******************************************************************************/
-/* External variables */
-extern u64_t __start_swap_time;
-extern u64_t __end_swap_time;
-extern u64_t __start_intr_time;
-extern u64_t __end_intr_time;
-extern u64_t __start_tick_time;
-extern u64_t __end_tick_time;
-/******************************************************************************/
 #ifdef CONFIG_USERSPACE
 #include <syscall_handler.h>
 __syscall int k_dummy_syscall(void);

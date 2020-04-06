@@ -6,8 +6,8 @@
 
 #include <ztest.h>
 #include <irq_offload.h>
-#include "test_mpool.h"
 #include <kernel_internal.h>
+#include "test_mpool.h"
 
 /** TESTPOINT: Statically define and initialize a memory pool*/
 K_MEM_POOL_DEFINE(kmpool, BLK_SIZE_MIN, BLK_SIZE_MAX, BLK_NUM_MAX, BLK_ALIGN);
@@ -164,7 +164,7 @@ void test_mpool_alloc_timeout(void)
 	 * TESTPOINT: Maximum time to wait for operation to complete (in
 	 * milliseconds)
 	 */
-	zassert_true(k_uptime_delta(&tms) >= TIMEOUT, NULL);
+	zassert_true(k_uptime_delta(&tms) >= TIMEOUT_MS, NULL);
 
 	for (int i = 0; i < BLK_NUM_MIN; i++) {
 		k_mem_pool_free(&block[i]);

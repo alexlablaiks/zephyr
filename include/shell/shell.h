@@ -162,10 +162,10 @@ struct shell_static_entry {
 					mandatory, optional) \
 		), \
 		(\
-		static shell_cmd_handler dummy_##syntax##handler \
-			__attribute__((unused)) = handler;\
+		static shell_cmd_handler dummy_##syntax##_handler __unused = \
+								handler;\
 		static const struct shell_cmd_entry *dummy_subcmd_##syntax \
-			__attribute__((unused)) = subcmd\
+			__unused = subcmd\
 		)\
 	)
 /**
@@ -224,23 +224,6 @@ struct shell_static_entry {
 	}
 
 /**
- * @brief Deprecated macro for creating a subcommand set.
- *
- * It must be used outside of any function body.
- *
- * @param[in] name	Name of the subcommand set.
- */
-#define SHELL_CREATE_STATIC_SUBCMD_SET(name)			\
-	__DEPRECATED_MACRO					\
-	static const struct shell_static_entry shell_##name[];	\
-	static const struct shell_cmd_entry name = {		\
-		.is_dynamic = false,				\
-		.u.entry = shell_##name				\
-	};							\
-	static const struct shell_static_entry shell_##name[] =
-
-
-/**
  * @brief Define ending subcommands set.
  *
  */
@@ -257,15 +240,6 @@ struct shell_static_entry {
 		.is_dynamic = true,			\
 		.u = { .dynamic_get = get }		\
 	}
-
-/**
- * @brief Deprecated macro for creating a dynamic entry.
- *
- * @param[in] name	Name of the dynamic entry.
- * @param[in] get	Pointer to the function returning dynamic commands array
- */
-#define SHELL_CREATE_DYNAMIC_CMD(name, get)		\
-	__DEPRECATED_MACRO SHELL_DYNAMIC_CMD_CREATE(name, get)
 
 /**
  * @brief Initializes a shell command with arguments.
@@ -501,7 +475,7 @@ struct shell_transport {
  * @brief Shell statistics structure.
  */
 struct shell_stats {
-	u32_t log_lost_cnt; /*!< Lost log counter.*/
+	atomic_t log_lost_cnt; /*!< Lost log counter.*/
 };
 
 #ifdef CONFIG_SHELL_STATS
@@ -527,8 +501,8 @@ struct shell_flags {
 	u32_t last_nl     :8; /*!< Last received new line character */
 };
 
-BUILD_ASSERT_MSG((sizeof(struct shell_flags) == sizeof(u32_t)),
-		 "Structure must fit in 4 bytes");
+BUILD_ASSERT((sizeof(struct shell_flags) == sizeof(u32_t)),
+	     "Structure must fit in 4 bytes");
 
 
 /**
